@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0a07"><link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icon-192.png">
+<title>SahelCoin Network</title>
+<!-- DEBUG TEMPORAIRE : actif seulement si l'adresse contient ?debug=1. À SUPPRIMER après avoir copié le jeton. -->
+<script>if(/[?&]debug/.test(location.search)){self.FIREBASE_APPCHECK_DEBUG_TOKEN=true;var d=document.createElement("script");d.src="https://cdn.jsdelivr.net/npm/eruda@3.0.1/eruda.js";d.onload=function(){eruda.init()};document.head.appendChild(d)}</script>
+<style>
+:root{--bg:#0b0a07;--card:#16130c;--line:#3a2f14;--gold:#d4a937;--gold2:#f3d77a;--txt:#f4ecd8;--mut:#9c9378;--ok:#5ed38a;--bad:#e5594f}
+*{box-sizing:border-box;margin:0}body{background:var(--bg);color:var(--txt);font:16px/1.5 Georgia,'Times New Roman',serif;padding-bottom:78px}
+h1,h2{font-weight:600}.wrap{max-width:480px;margin:auto;padding:20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin:12px 0}
+input,textarea,select{width:100%;background:#0f0d08;border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:12px;margin:6px 0;font:inherit}
+input:focus,button:focus-visible{outline:2px solid var(--gold)}
+button{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:12px 16px;background:linear-gradient(135deg,var(--gold2),var(--gold));color:#1a1405;font-weight:700;width:100%;margin:6px 0}
+button.ghost{background:none;border:1px solid var(--line);color:var(--gold2)}
+.mine{width:200px;height:200px;border-radius:50%;margin:24px auto;display:grid;place-items:center;font-size:20px;box-shadow:0 0 0 8px #d4a93722,0 0 40px #d4a93755}
+.mine:disabled{filter:grayscale(.6);box-shadow:0 0 0 8px #d4a93711}
+.bal{font-size:44px;color:var(--gold2);text-align:center;font-variant-numeric:tabular-nums}
+.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)}.row:last-child{border:0}
+.mut{color:var(--mut)}.ok{color:var(--ok)}.bad{color:var(--bad)}.c{text-align:center}
+nav{overflow-x:auto;position:fixed;bottom:0;left:0;right:0;display:flex;background:#100e08;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav button{font-size:12px;background:none;color:var(--mut);border-radius:0;margin:0;padding:14px 12px;flex:1 0 auto;font-weight:400}nav button.on{color:var(--gold2)}
+.page{display:none}.page.on{display:block}#msg{min-height:22px;text-align:center;font-size:14px}
+</style></head><body>
+<div class="wrap" id="auth" style="display:none">
+ <h1 class="c" style="color:var(--gold2);margin:28px 0 4px">SahelCoin Network</h1><p class="c mut">Minez le SHC, invitez votre équipe.</p>
+ <div class="card"><input id="u" placeholder="Nom d'utilisateur (inscription)"><input id="e" type="email" placeholder="E-mail"><input id="p" type="password" placeholder="Mot de passe"><input id="r" placeholder="Code d'invitation (SHC-XXXX)">
+ <button id="bUp">Créer mon compte</button><button class="ghost" id="bIn">Se connecter</button><button class="ghost" id="bG">Continuer avec Google</button><button class="ghost" id="bFg">Mot de passe oublié</button></div>
+</div>
+<div class="wrap" id="gmod" style="display:none"><div class="card"><h2>Finalisez votre inscription</h2><input id="gu" placeholder="Nom d'utilisateur"><input id="gr" placeholder="Code d'invitation (obligatoire)"><button id="gok">Valider</button></div></div>
+<div id="app" style="display:none"><div class="wrap">
+ <section class="page on" id="p-home"><div class="bal" id="bal">0.0000</div><p class="c mut">SHC</p>
+  <button class="mine" id="mine">MINER SHC</button><p class="c" id="cd"></p>
+  <div class="card"><div class="row"><span>Taux de base</span><b id="rb"></b></div><div class="row"><span>Bonus d'équipe actif</span><b id="rt"></b></div><div class="row"><span>Boost Market</span><b id="rbo"></b></div><div class="row"><span>Vitesse totale</span><b id="rv"></b></div></div></section>
+ <section class="page" id="p-team"><h2>Mon équipe</h2><div class="card c"><p class="mut">Votre code</p><h2 id="code" style="color:var(--gold2)"></h2><button class="ghost" id="cp">Copier le code</button></div><div class="card" id="tl"></div></section>
+ <section class="page" id="p-wal"><h2>Wallet</h2>
+  <div id="wlock" class="card"><p class="mut" id="wlt"></p><input id="pin" type="password" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="off"><button id="wgo">Déverrouiller</button><button class="ghost" id="wbio" style="display:none">Utiliser l'empreinte</button></div>
+  <div id="wopen" style="display:none"><div class="card"><p class="mut">Mon adresse Wallet</p><b id="wad"></b><div class="row"><span>Solde</span><b id="wbal"></b></div></div>
+  <div class="card"><p class="mut">Envoyer des SHC (adresses SHC- de la communauté uniquement)</p><input id="to" placeholder="SHC-XXXX-XXXX"><input id="am" type="number" step="0.0001" placeholder="Montant"><input id="spin" type="password" inputmode="numeric" maxlength="6" placeholder="PIN (si déverrouillé par empreinte)"><button id="snd">Envoyer</button></div>
+  <div class="card"><p class="mut">Phrase secrète : ne la partagez jamais</p><p id="ph"></p><button class="ghost" id="bioon">Activer l'empreinte</button><button class="ghost" id="wlk">Verrouiller</button></div></div></section>
+ <section class="page" id="p-rew"><h2>Récompenses</h2><div class="card"><div class="row"><span>Bonus quotidien</span><b id="dv"></b></div><button id="dly">Réclamer</button></div><div class="card" id="tk"></div></section>
+ <section class="page" id="p-news"><h2>Actualités</h2><div id="nl"></div></section>
+ <section class="page" id="p-chat"><h2>Chat</h2>
+  <div style="display:flex;gap:6px"><button class="ghost" data-t="g">Global</button><button class="ghost" data-t="t">Équipe</button><button class="ghost" data-t="p">Privé</button></div>
+  <div id="ct-t" style="display:none"><select id="tsel"></select></div>
+  <div id="ct-p" style="display:none"><input id="pa" placeholder="Adresse Wallet SHC-XXXX-XXXX"><button class="ghost" id="pgo">Ouvrir la conversation</button><div id="pl"></div></div>
+  <div class="card" id="ms" style="height:48vh;overflow:auto"></div>
+  <div style="display:flex;gap:6px"><input id="mt" maxlength="500" placeholder="Votre message"><button id="mg" style="width:auto">Envoyer</button></div></section>
+ <section class="page" id="p-mk"><h2>Market</h2><p class="mut" id="mbo"></p><div id="mk"></div><h2 style="margin-top:20px">Mes achats</h2><div class="card" id="mo"></div></section>
+ <section class="page" id="p-me"><h2>Profil</h2><div class="card" id="pf"></div><button class="ghost" id="out">Se déconnecter</button></section>
+ <section class="page" id="p-adm"><h2>Espace Fondateur 👑</h2><div class="card"><p class="mut">Taux de base (SHC/h)</p><input id="ab" type="number" step="0.0001"><p class="mut">Bonus par invité actif (SHC/h)</p><input id="ag" type="number" step="0.0001"><button id="asv">Mettre à jour les taux</button></div>
+  <div class="card"><p class="mut">Récompenses (SHC)</p><input id="adl" type="number" step="0.0001" placeholder="Bonus quotidien"><input id="atr" type="number" step="0.0001" placeholder="Gain par tâche"><input id="l-yt" placeholder="Lien YouTube https://…"><input id="l-yts" placeholder="Lien YouTube Studio https://…"><input id="l-fb" placeholder="Lien Facebook https://…"><input id="l-ig" placeholder="Lien Instagram https://…"><input id="l-x" placeholder="Lien Twitter (X) https://…"><input id="l-tt" placeholder="Lien TikTok https://…"><button id="arw">Enregistrer les récompenses</button></div>
+  <div class="card"><p class="mut">Publier une actualité</p><textarea id="nt" rows="3" placeholder="Texte de l'actualité"></textarea><input id="nf" type="file" accept="image/*,video/*"><input id="nu" placeholder="Lien cliquable sur le média https://…"><button id="npub">Publier</button></div>
+  <div class="card"><p class="mut">Pool de distribution utilisateurs (SHC crédités aux membres)</p><h2 id="pool"></h2></div>
+  <div class="card"><p class="mut">Réserve commerciale : marchands et entreprises</p><h2 id="rsv" style="color:var(--gold2);word-break:break-word"></h2><button class="ghost" id="rinit" style="display:none">Initialiser la réserve</button><p class="mut">Recettes du Market à reverser</p><h3 id="rin" style="color:var(--gold2)"></h3><button class="ghost" id="rsw">Reverser dans la réserve</button><input id="ra" placeholder="Adresse wallet du destinataire SHC-XXXX-XXXX"><input id="rm" inputmode="decimal" placeholder="Montant à envoyer"><button id="rsd">Envoyer</button></div>
+  <div class="card"><p class="mut">Modération : toute la communauté</p><div style="display:flex;gap:6px"><button class="ghost" id="gb-chat"></button><button class="ghost" id="gb-mining"></button><button class="ghost" id="gb-account"></button></div></div>
+  <div class="card"><p class="mut">Modération : par membre (✔ autorisé, ✖ bloqué)</p><input id="mf" placeholder="Rechercher un membre"><div id="ml"></div></div>
+  <div class="card"><p class="mut">Publier une offre au Market</p><input id="ot" placeholder="Titre"><textarea id="od" rows="2" placeholder="Description"></textarea><select id="oy"><option value="boost">Boost de minage</option><option value="merchant">Offre d'un marchand partenaire</option></select><input id="op" inputmode="decimal" placeholder="Prix (SHC)"><input id="orate" inputmode="decimal" placeholder="Boost : bonus en SHC/h"><input id="oday" inputmode="numeric" placeholder="Boost : durée en jours"><input id="osl" placeholder="Marchand : adresse wallet SHC-XXXX-XXXX"><input id="olk" placeholder="Lien de l'offre https://… (optionnel)"><button id="opub">Publier l'offre</button></div></section>
+ <p id="msg"></p></div>
+ <nav><button data-p="home" class="on">Accueil</button><button data-p="team">Équipe</button><button data-p="wal">Wallet</button><button data-p="rew">Gains</button><button data-p="news">Actus</button><button data-p="chat">Chat</button><button data-p="mk">Market</button><button data-p="me">Profil</button><button data-p="adm" id="nadm" style="display:none">👑</button></nav>
+</div>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getAuth,createUserWithEmailAndPassword as mk,signInWithEmailAndPassword as si,signInWithPopup,GoogleAuthProvider,onAuthStateChanged,signOut,sendEmailVerification,sendPasswordResetEmail} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {initializeAppCheck,ReCaptchaV3Provider} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
+import {getFunctions,httpsCallable} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
+import {getStorage,ref as sref,uploadBytes,getDownloadURL} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+import {getDatabase,ref,get,set,push,remove,update,onValue,runTransaction,query,orderByChild,equalTo,limitToLast} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+// 1) COLLEZ ICI la configuration de votre projet Firebase (Paramètres du projet > Vos applications)
+const firebaseConfig={apiKey:"AIzaSyCNFnfoJDt0OB43w9IJFyagKKhjB6nmKnE",authDomain:"sahelcoin-2d79f.firebaseapp.com",databaseURL:"https://sahelcoin-2d79f-default-rtdb.firebaseio.com",storageBucket:"sahelcoin-2d79f.firebasestorage.app",projectId:"sahelcoin-2d79f",messagingSenderId:"446818798458",appId:"1:446818798458:web:4c6dd6749478973b1064c3"};
+const FOUNDER="bogdiadadjoari50@gmail.com",DAY=864e5;
+const fb=initializeApp(firebaseConfig);
+const RECAPTCHA_KEY="6LeONCYuAAAAAGEbGbDoCIOOIhM9vce7Gaac0DKb";/* clé de site reCAPTCHA v3 (publique) */if(RECAPTCHA_KEY)initializeAppCheck(fb,{provider:new ReCaptchaV3Provider(RECAPTCHA_KEY),isTokenAutoRefreshEnabled:true});
+const auth=getAuth(fb),db=getDatabase(fb),st=getStorage(fb);const fn=n=>httpsCallable(getFunctions(fb,"europe-west1"),n);let curPin="";
+const $=i=>document.getElementById(i),say=(t,bad=1)=>{$("msg").textContent=t;$("msg").className=bad?"bad":"ok"};
+const DEF={baseRate:.05,guestBonus:.02,dailyBonus:.1,taskReward:.1,links:{}};let blk={},U={},B={},O={},IN={},adm=0,me=null,cfg=DEF,active=0,off=0,pend=null;
+onValue(ref(db,".info/serverTimeOffset"),s=>off=s.val()||0);
+const mb=()=>blk.mining||(cfg.blocked?.mining&&me.role!=="Fondateur"),chkB=()=>{if(me&&(blk.account||(cfg.blocked?.account&&me.role!=="Fondateur"))){say("Compte bloqué par le Fondateur.");signOut(auth)}},now=()=>Date.now()+off,rnd=n=>Array.from({length:n},()=>"ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.random()*32|0]).join("");
+const bo=()=>me&&me.boost&&me.boost.until>now()?+me.boost.rate:0,rate=()=>cfg.baseRate+active*cfg.guestBonus+bo();
+async function register(user,u,name,code){const r=await fn("register")({username:name,code});await user.getIdToken(true);localStorage.removeItem("shcpend");return r}
+$("bUp").onclick=async()=>{try{const nm=$("u").value.trim(),cd=$("r").value.trim();if(!nm)throw Error("Nom d'utilisateur obligatoire.");if(!cd)throw Error("Code d'invitation obligatoire.");
+ const c=await mk(auth,$("e").value,$("p").value);localStorage.setItem("shcpend",JSON.stringify({u:nm,r:cd}));await sendEmailVerification(c.user);say("E-mail de vérification envoyé. Confirmez-le (vérifiez les spams), puis connectez-vous.",0);await signOut(auth)}catch(e){say(e.message)}};
+$("bFg").onclick=()=>sendPasswordResetEmail(auth,$("e").value).then(()=>say("E-mail de réinitialisation envoyé.",0)).catch(e=>say(e.message));
+$("bIn").onclick=()=>si(auth,$("e").value,$("p").value).then(c=>{if(!c.user.emailVerified)say("Confirmez d'abord votre e-mail (vérifiez les spams).")}).catch(e=>say(e.message));
+$("bG").onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>say(e.message));
+$("gok").onclick=async()=>{try{await register(auth.currentUser,0,$("gu").value,$("gr").value);$("gmod").style.display="none";boot(auth.currentUser)}catch(e){say(e.message)}};
+onAuthStateChanged(auth,async u=>{
+ $("auth").style.display=$("app").style.display=$("gmod").style.display="none";
+ if(!u){$("auth").style.display="block";return}
+ if(!u.emailVerified){signOut(auth);return}
+ if(!(await get(ref(db,"users/"+u.uid))).exists()){const pd=JSON.parse(localStorage.getItem("shcpend")||"null");if(pd){$("gu").value=pd.u;$("gr").value=pd.r}$("gmod").style.display="block";return}
+ boot(u)});
+function boot(u){
+ $("app").style.display="block";
+ onValue(ref(db,"config"),s=>{cfg={...DEF,...(s.val()||{})};$("ab").value=cfg.baseRate;$("ag").value=cfg.guestBonus;$("adl").value=cfg.dailyBonus;$("atr").value=cfg.taskReward;TASKS.forEach(t=>$("l-"+t[0]).value=cfg.links?.[t[0]]||"");renderRew();chkB();renderMod()});
+ initChat(u);initMarket(u);onValue(ref(db,"blocks/"+u.uid),x=>{blk=x.val()||{};chkB()});
+ onValue(query(ref(db,"news"),orderByChild("ts"),limitToLast(30)),renderNews);
+ onValue(ref(db,"users/"+u.uid),s=>{me=s.val()||{};chkB();if(me.role==="Fondateur"&&!adm){adm=1;initAdmin()}
+  $("code").textContent=me.refCode;$("wbal").textContent=(me.balance||0).toFixed(4)+" SHC";renderRew();renderMk();const f=me.role==="Fondateur";$("nadm").style.display=f?"":"none";
+  $("pf").innerHTML=["Nom d'utilisateur|"+me.username+(f?" 👑":""),"E-mail|"+me.email,"Rôle|"+me.role,"Statut KYC|"+(me.kyc==="Approuvé"?"Approuvé ✅":"En attente")].map(x=>`<div class="row"><span class="mut">${x.split("|")[0]}</span><b>${x.split("|")[1]}</b></div>`).join("")});
+ onValue(query(ref(db,"profiles"),orderByChild("referredBy"),equalTo(u.uid)),s=>{const l=[];active=0;s.forEach(c=>{const v=c.val(),a=v.miningEnd>now();if(a)active++;l.push(`<div class="row"><span>${v.username}</span><b class="${a?"ok":"mut"}">${a?"Actif":"Inactif"}</b></div>`)});
+  $("tl").innerHTML=l.join("")||'<p class="mut c">Aucun filleul. Partagez votre code pour agrandir l\'équipe.</p>'});
+}
+$("mine").onclick=async()=>{if(!me||me.miningEnd>now()||mb())return say(mb()?"Minage bloqué.":"Session déjà en cours.");
+ await fn("startMining")().catch(e=>say(e.message))};
+setInterval(()=>{if(!me)return;const t=now(),run=me.miningEnd>t;
+ let acc=0;if(me.miningStart&&!me.claimed){acc=(Math.min(t,me.miningEnd)-me.miningStart)/36e5*(me.rate||0)}
+ $("bal").textContent=((me.balance||0)+acc).toFixed(4);
+ $("rb").textContent=cfg.baseRate.toFixed(4)+" SHC/h";$("rt").textContent="+"+(active*cfg.guestBonus).toFixed(4)+" SHC/h";$("rv").textContent=rate().toFixed(4)+" SHC/h";$("rbo").textContent="+"+bo().toFixed(4)+" SHC/h";$("mbo").textContent=bo()?"Boost actif : +"+bo().toFixed(4)+" SHC/h jusqu'au "+new Date(me.boost.until).toLocaleDateString("fr-FR")+". Il s'applique à votre prochaine session.":"";
+ const b=$("mine");if(run){const d=me.miningEnd-t,h=d/36e5|0,m=d%36e5/6e4|0,s=d%6e4/1e3|0;b.disabled=true;b.textContent="En cours";$("cd").textContent=[h,m,s].map(x=>String(x).padStart(2,"0")).join(":")}
+ else{b.disabled=false;b.textContent="MINER SHC";$("cd").textContent=me.miningStart&&!me.claimed?"Session terminée : relancez pour encaisser":"";
+  if(me.miningStart&&!me.claimed&&!pend){pend=1;fn("claimMining")().catch(()=>{}).finally(()=>setTimeout(()=>{pend=0},10000))}}
+},1000);
+
+// ---- Wallet ----
+const WORDS="sable dune puits niger acacia baobab mil karité chameau oasis soleil vent miel thé tente étoile fleuve savane marché griot tambour argent cuivre pierre nuit aube ciel pluie récolte village route voile".split(" ");
+const sha=async t=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(t)))].map(x=>x.toString(16).padStart(2,"0")).join("");
+const pr=()=>ref(db,"private/"+auth.currentUser.uid),bk=()=>"shcbio_"+auth.currentUser.uid,rb=()=>crypto.getRandomValues(new Uint8Array(32));
+async function initW(){const e=!!me.hasPin;$("wlt").textContent=e?"Entrez votre code PIN à 6 chiffres.":"Créez votre code PIN à 6 chiffres.";$("wgo").textContent=e?"Déverrouiller":"Créer le PIN";$("wbio").style.display=e&&localStorage.getItem(bk())?"block":"none"}
+function lockW(){curPin="";$("wlock").style.display="block";$("wopen").style.display="none";$("pin").value="";$("ph").textContent=""}
+function openW(ph){$("wlock").style.display="none";$("wopen").style.display="block";$("wad").textContent=me.wallet;$("ph").textContent=ph||"La phrase secrète est affichée une seule fois, à la création du PIN. Elle ne peut plus être récupérée."}
+$("wgo").onclick=async()=>{try{const p=$("pin").value;if(!/^\d{6}$/.test(p))throw Error("Le PIN doit contenir exactement 6 chiffres.");let ph;if(me.hasPin)await fn("unlockWallet")({pin:p});else ph=(await fn("setPin")({pin:p})).data.phrase;curPin=p;$("pin").value="";openW(ph)}catch(e){say(e.message)}};
+$("wlk").onclick=()=>{lockW();initW()};
+$("bioon").onclick=async()=>{try{const c=await navigator.credentials.create({publicKey:{challenge:rb(),rp:{name:"SahelCoin"},user:{id:new TextEncoder().encode(auth.currentUser.uid),name:me.email,displayName:me.username},pubKeyCredParams:[{type:"public-key",alg:-7},{type:"public-key",alg:-257}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"}}});
+ localStorage.setItem(bk(),btoa(String.fromCharCode(...new Uint8Array(c.rawId))));say("Empreinte activée sur cet appareil.",0)}catch(e){say("Empreinte indisponible sur cet appareil.")}};
+$("wbio").onclick=async()=>{try{const id=Uint8Array.from(atob(localStorage.getItem(bk())),c=>c.charCodeAt(0));
+ await navigator.credentials.get({publicKey:{challenge:rb(),allowCredentials:[{type:"public-key",id}],userVerification:"required"}});openW()}catch(e){say("Empreinte refusée : utilisez votre PIN.")}};
+const r4=n=>Math.round(n*1e4)/1e4;
+$("snd").onclick=async()=>{try{const pin=curPin||$("spin").value;if(!pin)throw Error("Entrez votre PIN pour envoyer.");await fn("sendSHC")({to:$("to").value.trim().toUpperCase(),amount:+$("am").value,pin});$("am").value=$("to").value=$("spin").value="";say("SHC envoyés.",0)}catch(e){say(e.message)}};
+
+// ---- Récompenses ----
+const TASKS=[["yt","YouTube"],["yts","YouTube Studio"],["fb","Facebook"],["ig","Instagram"],["x","Twitter (X)"],["tt","TikTok"]];
+const safe=u=>/^https?:\/\//i.test(u||""),started={},WAIT=15e3;
+function renderRew(){if(!me)return;const day=Math.floor(now()/DAY),done=me.lastDaily===day;
+ $("dv").textContent="+"+(+cfg.dailyBonus).toFixed(4)+" SHC";$("dly").disabled=done||blk.account;$("dly").textContent=done?"Déjà réclamé aujourd'hui":"Réclamer mon bonus";
+ $("tk").innerHTML=TASKS.map(t=>{const id=t[0],ok=me.tasks?.[id],has=safe(cfg.links?.[id]),w=started[id]&&Date.now()-started[id]<WAIT;
+  const b=ok?'<b class="ok">Fait ✅</b>':!has?'<span class="mut">Bientôt</span>':!started[id]?`<button data-o="${id}" style="width:auto;margin:0">Ouvrir</button>`:w?'<span class="mut">Patientez…</span>':`<button data-c="${id}" style="width:auto;margin:0">+${(+cfg.taskReward).toFixed(4)} SHC</button>`;
+  return `<div class="row"><span>${t[1]}</span>${b}</div>`}).join("")}
+$("dly").onclick=()=>fn("claimDaily")().then(r=>say("Bonus quotidien reçu : +"+r.data.a+" SHC.",0)).catch(e=>say(e.message));
+$("tk").onclick=e=>{const o=e.target.dataset.o,c=e.target.dataset.c;
+ if(o){window.open(cfg.links[o],"_blank","noopener");started[o]=Date.now();renderRew();setTimeout(renderRew,WAIT+300);fn("startTask")({id:o}).catch(er=>say(er.message))}
+ if(c)fn("claimTask")({id:c}).then(r=>say("Tâche validée : +"+r.data.a+" SHC.",0)).catch(er=>say(er.message))};
+$("arw").onclick=()=>{const links={};for(const t of TASKS){const v=$("l-"+t[0]).value.trim();if(v&&!safe(v))return say("Les liens doivent commencer par https://");links[t[0]]=v}
+ update(ref(db,"config"),{dailyBonus:+$("adl").value,taskReward:+$("atr").value,links}).then(()=>say("Récompenses enregistrées.",0)).catch(e=>say(e.message))};
+// ---- Actualités ----
+function renderNews(snap){const box=$("nl"),a=[];box.textContent="";snap.forEach(c=>{a.push(c.val())});a.reverse();
+ const link=(h,txt)=>{const l=document.createElement("a");l.href=h;l.target="_blank";l.rel="noopener noreferrer";if(txt){l.textContent=txt;l.style.color="var(--gold2)"}return l};
+ a.forEach(n=>{const d=document.createElement("div");d.className="card";
+  if(safe(n.mediaUrl)){const vid=n.mediaType==="video",m=document.createElement(vid?"video":"img");m.src=n.mediaUrl;m.style.cssText="width:100%;border-radius:10px";
+   if(vid){m.controls=true;m.playsInline=true;m.preload="metadata"}else m.alt="";
+   if(safe(n.link)&&!vid){const l=link(n.link);l.appendChild(m);d.appendChild(l)}else d.appendChild(m)}
+  if(n.text){const p=document.createElement("p");p.textContent=n.text;p.style.margin="10px 0 4px";d.appendChild(p)}
+  if(safe(n.link)&&n.mediaType==="video")d.appendChild(link(n.link,"Ouvrir le lien"));
+  const t=document.createElement("p");t.className="mut";t.style.fontSize="13px";t.textContent=new Date(n.ts).toLocaleDateString("fr-FR");d.appendChild(t);box.appendChild(d)});
+ if(!a.length)box.innerHTML='<p class="mut c">Aucune actualité pour le moment.</p>'}
+$("npub").onclick=async()=>{try{const f=$("nf").files[0],text=$("nt").value.trim(),lk=$("nu").value.trim();
+ if(lk&&!safe(lk))throw Error("Le lien doit commencer par https://");if(!f&&!text)throw Error("Ajoutez un texte ou un média.");
+ if(f&&f.size>25*1048576)throw Error("Média trop lourd (25 Mo maximum).");
+ const n={text,link:lk,ts:now()};
+ if(f){say("Envoi du média…",0);const r=sref(st,"news/"+now()+"_"+rnd(4));await uploadBytes(r,f);n.mediaUrl=await getDownloadURL(r);n.mediaType=f.type.startsWith("video")?"video":"image"}
+ await push(ref(db,"news"),n);$("nt").value=$("nu").value=$("nf").value="";say("Actualité publiée.",0)}catch(e){say(e.message)}};
+
+// ---- Chat unifié ----
+let unC=null,room=null,mode="g",dmTo=null;
+const dmId=(a,b)=>[a,b].sort().join("_");
+function openRoom(path){unC&&unC();room=path;unC=onValue(query(ref(db,path),orderByChild("ts"),limitToLast(50)),s=>{const box=$("ms"),uid=auth.currentUser.uid;box.textContent="";
+ s.forEach(c=>{const m=c.val(),me_=m.u===uid,d=document.createElement("div"),n=document.createElement("small"),t=document.createElement("div");
+  d.style.cssText="margin:6px 0;text-align:"+(me_?"right":"left");n.className="mut";n.textContent=m.n;t.textContent=m.t;
+  t.style.cssText="display:inline-block;max-width:85%;padding:8px 12px;border-radius:12px;word-break:break-word;background:"+(me_?"#3a2f14":"#0f0d08");
+  d.append(n,document.createElement("br"),t);box.appendChild(d)});box.scrollTop=box.scrollHeight})}
+function setMode(m){mode=m;$("ct-t").style.display=m==="t"?"block":"none";$("ct-p").style.display=m==="p"?"block":"none";
+ document.querySelectorAll("[data-t]").forEach(b=>b.style.background=b.dataset.t===m?"#3a2f14":"");
+ if(m==="g")openRoom("chats/global");
+ if(m==="t"){const o=[["Mon équipe",auth.currentUser.uid]];if(me.referredBy)o.push(["Équipe de mon parrain",me.referredBy]);
+  $("tsel").innerHTML=o.map(x=>`<option value="${x[1]}">${x[0]}</option>`).join("");$("tsel").onchange=()=>openRoom("chats/team/"+$("tsel").value);openRoom("chats/team/"+$("tsel").value)}
+ if(m==="p"){unC&&unC();unC=null;room=null;dmTo=null;$("ms").textContent=""}}
+document.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>setMode(b.dataset.t));
+function initChat(u){onValue(ref(db,"userChats/"+u.uid),s=>{const l=$("pl");l.textContent="";
+ s.forEach(c=>{const b=document.createElement("button");b.className="ghost";b.textContent=c.val().n;b.onclick=()=>startDm(c.key,c.val().n);l.appendChild(b)})})}
+function startDm(other,name){dmTo={uid:other,name};openRoom("chats/dm/"+dmId(auth.currentUser.uid,other));say("Conversation avec "+name,0)}
+$("pgo").onclick=async()=>{try{const a=$("pa").value.trim().toUpperCase(),d=await get(ref(db,"walletIndex/"+a));
+ if(!d.exists())throw Error("Adresse inconnue dans la communauté.");if(d.val()===auth.currentUser.uid)throw Error("C'est votre propre adresse.");
+ startDm(d.val(),(await get(ref(db,"profiles/"+d.val()+"/username"))).val()||a);$("pa").value=""}catch(e){say(e.message)}};
+$("mg").onclick=async()=>{try{const t=$("mt").value.trim();if(!t||!room)return;
+ if(blk.chat||(cfg.blocked?.chat&&me.role!=="Fondateur"))throw Error("Le chat est désactivé pour votre compte.");
+ const u=auth.currentUser.uid,ts=now();await push(ref(db,room),{u,n:me.username,t,ts});
+ if(mode==="p"&&dmTo)await update(ref(db),{["userChats/"+u+"/"+dmTo.uid]:{n:dmTo.name,ts},["userChats/"+dmTo.uid+"/"+u]:{n:me.username,ts}});
+ $("mt").value=""}catch(e){say(e.message)}};
+$("mt").onkeydown=e=>{if(e.key==="Enter")$("mg").click()};
+
+// ---- Fondateur : trésorerie & modération ----
+const fmtU=u=>(BigInt(u)/10000n).toLocaleString("fr-FR")+" SHC",toU=t=>{const m=/^(\d+)(?:[.,](\d{1,4}))?$/.exec(t.trim());return m?BigInt(m[1])*10000n+BigInt((m[2]||"").padEnd(4,"0")):null};
+function initAdmin(){onValue(ref(db,"users"),x=>{U=x.val()||{};renderMod()});onValue(ref(db,"blocks"),x=>{B=x.val()||{};renderMod()});
+ onValue(ref(db,"treasuryIn"),x=>{IN=x.val()||{};$("rin").textContent=Object.values(IN).reduce((t,v)=>t+(+v.a||0),0).toFixed(4)+" SHC"});
+ onValue(ref(db,"treasury/commercial"),x=>{$("rsv").textContent=x.exists()?fmtU(x.val()):"Non initialisée";$("rinit").style.display=x.exists()?"none":"block"})}
+function renderMod(){const q=$("mf").value.toLowerCase(),l=$("ml");let tot=0;l.textContent="";
+ for(const [id,v] of Object.entries(U)){if(v.role==="Fondateur")continue;tot+=v.balance||0;if(q&&!(v.username||"").toLowerCase().includes(q))continue;
+  const d=document.createElement("div"),n=document.createElement("span"),g=document.createElement("span");d.className="row";d.style.flexWrap="wrap";n.textContent=v.username;
+  [["chat","Chat"],["mining","Minage"],["account","Compte"]].forEach(k=>{const b=document.createElement("button");b.textContent=k[1]+(B[id]?.[k[0]]?" ✖":" ✔");b.className="ghost";b.style.cssText="width:auto;margin:2px;padding:6px 8px;font-size:13px";b.dataset.u=id;b.dataset.k=k[0];g.appendChild(b)});
+  d.append(n,g);l.appendChild(d)}
+ $("pool").textContent=tot.toFixed(4)+" SHC";
+ [["chat","Chat"],["mining","Minage"],["account","Comptes"]].forEach(k=>$("gb-"+k[0]).textContent=k[1]+(cfg.blocked?.[k[0]]?" ✖":" ✔"))}
+$("mf").oninput=renderMod;
+$("ml").onclick=e=>{const b=e.target.closest("button");if(!b)return;const{u,k}=b.dataset;set(ref(db,"blocks/"+u+"/"+k),B[u]?.[k]?null:true).catch(er=>say(er.message))};
+["chat","mining","account"].forEach(k=>$("gb-"+k).onclick=()=>set(ref(db,"config/blocked/"+k),cfg.blocked?.[k]?null:true).catch(er=>say(er.message)));
+$("rinit").onclick=()=>set(ref(db,"treasury/commercial"),"5"+"0".repeat(26)).catch(e=>say(e.message));
+$("rsd").onclick=async()=>{try{const to=$("ra").value.trim().toUpperCase(),u=toU($("rm").value);
+ if(!/^SHC-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(to))throw Error("Adresse refusée : seules les adresses SHC- sont acceptées.");
+ if(!u||u<=0n)throw Error("Entrez un montant valide (4 décimales maximum).");if(u>10n**15n)throw Error("Montant maximum par envoi : 100 000 000 000 SHC.");
+ const x=(await fn("reserveSend")({to,units:u.toString()})).data;$("ra").value=$("rm").value="";say(x.a+" SHC envoyés depuis la réserve.",0)}catch(e){say(e.message)}};
+
+// ---- Market ----
+function initMarket(u){onValue(ref(db,"market/offers"),x=>{O=x.val()||{};renderMk()});
+ onValue(query(ref(db,"orders/"+u.uid),limitToLast(10)),x=>{const a=[];x.forEach(c=>{a.push(c.val())});a.reverse();const b=$("mo");b.textContent="";
+  a.forEach(o=>{const d=document.createElement("div"),n=document.createElement("span"),m=document.createElement("span");d.className="row";n.textContent=o.t;m.className="mut";m.textContent=(+o.p).toFixed(4)+" SHC · "+new Date(o.ts).toLocaleDateString("fr-FR");d.append(n,m);b.appendChild(d)});
+  if(!a.length)b.innerHTML='<p class="mut c">Aucun achat pour le moment.</p>'})}
+function renderMk(){const box=$("mk");if(!box||!me)return;box.textContent="";const a=Object.entries(O).sort((x,y)=>y[1].ts-x[1].ts),f=me.role==="Fondateur";
+ a.forEach(([id,o])=>{const c=document.createElement("div"),h=document.createElement("h3"),d=document.createElement("p"),m=document.createElement("p"),k=document.createElement("button");
+  c.className="card";h.textContent=o.title;d.textContent=o.desc||"";d.className="mut";m.style.color="var(--gold2)";
+  m.textContent=(+o.price).toFixed(4)+" SHC"+(o.type==="boost"?" · +"+(+o.rate).toFixed(4)+" SHC/h pendant "+o.days+" jour(s)":" · offre partenaire");
+  k.textContent="Acheter";k.dataset.b=id;c.append(h,d,m);
+  if(safe(o.link)){const l=document.createElement("a");l.href=o.link;l.target="_blank";l.rel="noopener noreferrer";l.textContent="En savoir plus";l.style.color="var(--gold2)";c.appendChild(l)}
+  c.appendChild(k);if(f){const x=document.createElement("button");x.className="ghost";x.textContent="Retirer l'offre";x.dataset.d=id;c.appendChild(x)}box.appendChild(c)});
+ if(!a.length)box.innerHTML='<p class="mut c">Aucune offre pour le moment. Revenez bientôt.</p>'}
+$("mk").onclick=async e=>{const b=e.target.closest("button");if(!b)return;if(b.dataset.d){remove(ref(db,"market/offers/"+b.dataset.d)).catch(er=>say(er.message));return}
+ try{await fn("buyOffer")({id:b.dataset.b});say("Achat confirmé.",0)}catch(er){say(er.message)}};
+$("opub").onclick=async()=>{try{const t=$("ot").value.trim(),ty=$("oy").value,p=r4(+$("op").value.replace(",",".")),rt=+$("orate").value.replace(",","."),dy=Math.round(+$("oday").value),sl=$("osl").value.trim().toUpperCase(),lk=$("olk").value.trim();
+ if(!t||!(p>0))throw Error("Le titre et le prix sont obligatoires.");if(lk&&!safe(lk))throw Error("Le lien doit commencer par https://");
+ const o={title:t,desc:$("od").value.trim(),type:ty,price:p,link:lk,ts:now()};
+ if(ty==="boost"){if(!(rt>0)||!(dy>0))throw Error("Indiquez le bonus (SHC/h) et la durée (jours).");o.rate=rt;o.days=dy}
+ else{if(!/^SHC-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(sl))throw Error("Adresse wallet du marchand invalide.");o.seller=sl}
+ await push(ref(db,"market/offers"),o);["ot","od","op","orate","oday","osl","olk"].forEach(i=>$(i).value="");say("Offre publiée.",0)}catch(e){say(e.message)}};
+
+$("rsw").onclick=()=>fn("sweepTreasury")().then(()=>say("Recettes reversées dans la réserve commerciale.",0)).catch(er=>say(er.message));
+if("serviceWorker" in navigator)addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+$("asv").onclick=()=>update(ref(db,"config"),{baseRate:+$("ab").value,guestBonus:+$("ag").value}).then(()=>say("Taux mis à jour.",0)).catch(e=>say(e.message));
+$("cp").onclick=()=>navigator.clipboard.writeText(me.refCode).then(()=>say("Code copié.",0));
+$("out").onclick=()=>signOut(auth);
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{lockW();if(b.dataset.p==="wal")initW();if(b.dataset.p==="chat")setMode(mode);else if(unC){unC();unC=null}document.querySelectorAll(".page,nav button").forEach(x=>x.classList.remove("on"));b.classList.add("on");$("p-"+b.dataset.p).classList.add("on")});
+</script></body></html>
